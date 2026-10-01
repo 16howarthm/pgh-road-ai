@@ -1,3 +1,5 @@
+import ast
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -5,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import road_ai
 
 from road_ai import (
     DEFAULT_CATEGORIES,
@@ -132,6 +135,23 @@ class CategoryExperimentTests(unittest.TestCase):
         several = make_examples(prompt, "work_type", n_examples=6)
         self.assertEqual(len(several), 6)
         self.assertEqual({example["category"] for example in several}, set(DEFAULT_CATEGORIES))
+
+    def test_notebook_road_ai_imports_exist_and_are_exported(self):
+        notebook_path = Path(__file__).resolve().parents[1] / "category_analysis.ipynb"
+        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+        imported_names = set()
+        for cell in notebook["cells"]:
+            if cell.get("cell_type") != "code":
+                continue
+            tree = ast.parse("".join(cell.get("source", [])))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module == "road_ai":
+                    imported_names.update(alias.name for alias in node.names)
+
+        self.assertIn("LLAMA_SCOUT_MODEL", imported_names)
+        self.assertIn("load_results_checkpoint", imported_names)
+        self.assertFalse(imported_names - set(road_ai.__all__))
+        self.assertFalse({name for name in imported_names if not hasattr(road_ai, name)})
 
     def test_scout_routing_is_model_specific(self):
         response = SimpleNamespace(

@@ -25,6 +25,32 @@ MODEL_PROVIDER_ROUTING = {
     }
 }
 
+__all__ = [
+    "DEFAULT_CATEGORIES",
+    "NORMALIZED_DESCRIPTION_COL",
+    "FAILED_PREDICTION",
+    "RESULT_KEY_COLUMNS",
+    "LLAMA_SCOUT_MODEL",
+    "MODEL_PROVIDER_ROUTING",
+    "openrouter_client",
+    "dedupe_permits",
+    "prepare_eligible_data",
+    "balanced_sample",
+    "validate_splits",
+    "split_prompt_test",
+    "save_fixed_splits",
+    "load_fixed_splits",
+    "make_examples",
+    "classification_prompt",
+    "classify_one",
+    "save_results_checkpoint",
+    "load_results_checkpoint",
+    "completed_result_keys",
+    "remove_model_routing_failures",
+    "run_experiment",
+    "score_results",
+]
+
 
 def _normalize_text(value) -> str:
     if pd.isna(value):
