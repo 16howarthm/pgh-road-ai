@@ -17,6 +17,13 @@ DEFAULT_CATEGORIES = ["MACHINERY", "DEMOLITION DUMPSTER", "CRANE", "BARRICADE", 
 NORMALIZED_DESCRIPTION_COL = "normalized_description"
 FAILED_PREDICTION = "__FAILED__"
 RESULT_KEY_COLUMNS = ["model", "prompt_condition", "permit_id"]
+LLAMA_SCOUT_MODEL = "meta-llama/llama-4-scout"
+MODEL_PROVIDER_ROUTING = {
+    LLAMA_SCOUT_MODEL: {
+        "only": ["google-vertex"],
+        "require_parameters": True,
+    }
+}
 
 
 def _normalize_text(value) -> str:
@@ -246,14 +253,20 @@ Confidence must be between 0 and 1.
 
 def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=None, client=None):
     client = client or openrouter_client()
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
+    request = {
+        "model": model,
+        "messages": [
             {"role": "system", "content": classification_prompt(categories, examples)},
             {"role": "user", "content": str(description)},
         ],
-        response_format={"type": "json_object"},
-        temperature=0,
+        "response_format": {"type": "json_object"},
+        "temperature": 0,
+    }
+    if model in MODEL_PROVIDER_ROUTING:
+        request["extra_body"] = {"provider": MODEL_PROVIDER_ROUTING[model]}
+
+    resp = client.chat.completions.create(
+        **request,
     )
     raw = resp.choices[0].message.content
     try:
@@ -328,6 +341,21 @@ def completed_result_keys(results):
         return set()
     _require_columns(results, RESULT_KEY_COLUMNS)
     return set(results[RESULT_KEY_COLUMNS].itertuples(index=False, name=None))
+
+
+def remove_model_routing_failures(results, model):
+    """Remove only saved 404/no-endpoint failures for one model so they can be retried."""
+    if results.empty:
+        return results.copy(), 0
+    _require_columns(results, ["model", "predicted", "error"])
+    errors = results["error"].fillna("").astype(str)
+    retry_mask = (
+        results["model"].astype(str).eq(str(model))
+        & results["predicted"].astype(str).eq(FAILED_PREDICTION)
+        & errors.str.contains("Error code: 404", case=False, regex=False)
+        & errors.str.contains("No endpoint", case=False, regex=False)
+    )
+    return results.loc[~retry_mask].reset_index(drop=True), int(retry_mask.sum())
 
 
 def run_experiment(

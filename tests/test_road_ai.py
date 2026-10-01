@@ -1,20 +1,24 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
 from road_ai import (
     DEFAULT_CATEGORIES,
     FAILED_PREDICTION,
+    LLAMA_SCOUT_MODEL,
     NORMALIZED_DESCRIPTION_COL,
     balanced_sample,
+    classify_one,
     completed_result_keys,
     dedupe_permits,
     load_fixed_splits,
     load_results_checkpoint,
     make_examples,
+    remove_model_routing_failures,
     run_experiment,
     save_fixed_splits,
     save_results_checkpoint,
@@ -128,6 +132,56 @@ class CategoryExperimentTests(unittest.TestCase):
         several = make_examples(prompt, "work_type", n_examples=6)
         self.assertEqual(len(several), 6)
         self.assertEqual({example["category"] for example in several}, set(DEFAULT_CATEGORIES))
+
+    def test_scout_routing_is_model_specific(self):
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content='{"category":"CRANE"}'))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+        )
+        client = MagicMock()
+        client.chat.completions.create.return_value = response
+
+        classify_one("crane lift", LLAMA_SCOUT_MODEL, client=client)
+        scout_request = client.chat.completions.create.call_args.kwargs
+        self.assertEqual(
+            scout_request["extra_body"],
+            {"provider": {"only": ["google-vertex"], "require_parameters": True}},
+        )
+
+        client.chat.completions.create.reset_mock()
+        classify_one("crane lift", "openai/gpt-oss-120b", client=client)
+        gpt_request = client.chat.completions.create.call_args.kwargs
+        self.assertNotIn("extra_body", gpt_request)
+
+    def test_only_scout_routing_failures_are_removed_for_resume(self):
+        rows = pd.DataFrame(
+            [
+                {
+                    "model": LLAMA_SCOUT_MODEL,
+                    "predicted": FAILED_PREDICTION,
+                    "error": "Error code: 404 - No endpoints found for this request",
+                },
+                {"model": LLAMA_SCOUT_MODEL, "predicted": "CRANE", "error": None},
+                {
+                    "model": LLAMA_SCOUT_MODEL,
+                    "predicted": FAILED_PREDICTION,
+                    "error": "Out-of-vocabulary category",
+                },
+                {
+                    "model": "openai/gpt-oss-120b",
+                    "predicted": FAILED_PREDICTION,
+                    "error": "Error code: 404 - No endpoints found for this request",
+                },
+            ]
+        )
+        kept, removed = remove_model_routing_failures(rows, LLAMA_SCOUT_MODEL)
+        self.assertEqual(removed, 1)
+        self.assertEqual(len(kept), 3)
+        self.assertEqual(kept.model.value_counts().to_dict()["openai/gpt-oss-120b"], 1)
+        self.assertEqual(
+            kept.loc[kept.model.eq(LLAMA_SCOUT_MODEL), "predicted"].tolist(),
+            ["CRANE", FAILED_PREDICTION],
+        )
 
     @patch("road_ai.classify_one")
     def test_run_maps_api_missing_and_oov_failures(self, classify_one):
