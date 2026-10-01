@@ -1,0 +1,8 @@
+{
+  "ambiguous_description_groups": 28,
+  "ambiguous_records_excluded": 505,
+  "eligible_permits_before_ambiguity_filter": 12746,
+  "random_state": 42,
+  "records_per_category": 50,
+  "sample_size": 300
+}
