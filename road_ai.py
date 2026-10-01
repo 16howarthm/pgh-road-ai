@@ -16,6 +16,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 DEFAULT_CATEGORIES = ["MACHINERY", "DEMOLITION DUMPSTER", "CRANE", "BARRICADE", "MATERIALS", "SCAFFOLD"]
 NORMALIZED_DESCRIPTION_COL = "normalized_description"
 FAILED_PREDICTION = "__FAILED__"
+RESULT_KEY_COLUMNS = ["model", "prompt_condition", "permit_id"]
 
 
 def _normalize_text(value) -> str:
@@ -273,6 +274,62 @@ def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=Non
     return obj
 
 
+def save_results_checkpoint(results, path):
+    """Atomically save one row per model/prompt/permit experiment key."""
+    _require_columns(results, RESULT_KEY_COLUMNS)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint = (
+        results.drop_duplicates(RESULT_KEY_COLUMNS, keep="last")
+        .sort_values(RESULT_KEY_COLUMNS, kind="stable")
+        .reset_index(drop=True)
+    )
+    temporary_path = path.with_name(f".{path.name}.tmp")
+    checkpoint.to_csv(temporary_path, index=False)
+    os.replace(temporary_path, path)
+    return checkpoint
+
+
+def load_results_checkpoint(path, models, prompt_conditions, permit_ids):
+    """Load and validate resumable results for the configured experiment."""
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+
+    results = pd.read_csv(path)
+    _require_columns(results, [*RESULT_KEY_COLUMNS, "n_examples"])
+    results["model"] = results["model"].astype(str)
+    results["prompt_condition"] = results["prompt_condition"].astype(str)
+    results["permit_id"] = results["permit_id"].astype(str)
+
+    unknown_models = sorted(set(results["model"]) - set(models))
+    unknown_conditions = sorted(set(results["prompt_condition"]) - set(prompt_conditions))
+    unknown_permits = sorted(set(results["permit_id"]) - {str(value) for value in permit_ids})
+    if unknown_models or unknown_conditions or unknown_permits:
+        raise ValueError(
+            "Checkpoint does not match this experiment: "
+            f"models={unknown_models}, conditions={unknown_conditions}, permits={unknown_permits[:5]}"
+        )
+
+    expected_examples = results["prompt_condition"].map(prompt_conditions)
+    recorded_examples = pd.to_numeric(results["n_examples"], errors="coerce")
+    if not recorded_examples.eq(expected_examples).all():
+        raise ValueError("Checkpoint example counts do not match the configured prompt conditions.")
+
+    return (
+        results.drop_duplicates(RESULT_KEY_COLUMNS, keep="last")
+        .sort_values(RESULT_KEY_COLUMNS, kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def completed_result_keys(results):
+    if results.empty:
+        return set()
+    _require_columns(results, RESULT_KEY_COLUMNS)
+    return set(results[RESULT_KEY_COLUMNS].itertuples(index=False, name=None))
+
+
 def run_experiment(
     test_df,
     label_col,
@@ -281,6 +338,8 @@ def run_experiment(
     examples=None,
     sleep_s=0.0,
     client=None,
+    on_result=None,
+    progress_callback=None,
 ):
     rows = []
     client = client or openrouter_client()
@@ -314,6 +373,10 @@ def run_experiment(
         except Exception as exc:
             result["error"] = str(exc)
         rows.append(result)
+        if on_result:
+            on_result(result.copy())
+        if progress_callback:
+            progress_callback()
         if sleep_s:
             time.sleep(sleep_s)
     return pd.DataFrame(rows)
