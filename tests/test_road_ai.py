@@ -10,11 +10,14 @@ from road_ai import (
     FAILED_PREDICTION,
     NORMALIZED_DESCRIPTION_COL,
     balanced_sample,
+    completed_result_keys,
     dedupe_permits,
     load_fixed_splits,
+    load_results_checkpoint,
     make_examples,
     run_experiment,
     save_fixed_splits,
+    save_results_checkpoint,
     score_results,
     split_prompt_test,
     validate_splits,
@@ -141,9 +144,48 @@ class CategoryExperimentTests(unittest.TestCase):
                 "label": ["A", "B", "A", "B"],
             }
         )
-        result = run_experiment(test, "label", "model", categories=["A", "B"], client=object())
+        persisted = []
+        progress = []
+        result = run_experiment(
+            test,
+            "label",
+            "model",
+            categories=["A", "B"],
+            client=object(),
+            on_result=persisted.append,
+            progress_callback=lambda: progress.append(1),
+        )
         self.assertEqual(result.predicted.tolist(), ["A", FAILED_PREDICTION, FAILED_PREDICTION, FAILED_PREDICTION])
         self.assertEqual(result.error.notna().sum(), 3)
+        self.assertEqual(len(persisted), 4)
+        self.assertEqual(len(progress), 4)
+        self.assertEqual(persisted[-1]["predicted"], FAILED_PREDICTION)
+
+    def test_results_checkpoint_is_atomic_deduplicated_and_resumable(self):
+        rows = pd.DataFrame(
+            [
+                {"model": "m", "prompt_condition": "zero", "permit_id": "1", "n_examples": 0, "predicted": "A"},
+                {"model": "m", "prompt_condition": "zero", "permit_id": "1", "n_examples": 0, "predicted": "B"},
+                {"model": "m", "prompt_condition": "zero", "permit_id": "2", "n_examples": 0, "predicted": "A"},
+            ]
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "classification_results.csv"
+            saved = save_results_checkpoint(rows, path)
+            self.assertTrue(path.exists())
+            self.assertFalse((Path(directory) / ".classification_results.csv.tmp").exists())
+            self.assertEqual(len(saved), 2)
+
+            loaded = load_results_checkpoint(path, ["m"], {"zero": 0}, ["1", "2", "3"])
+            self.assertEqual(len(loaded), 2)
+            self.assertEqual(
+                completed_result_keys(loaded),
+                {("m", "zero", "1"), ("m", "zero", "2")},
+            )
+            self.assertEqual(loaded.loc[loaded.permit_id.eq("1"), "predicted"].item(), "B")
+
+            with self.assertRaises(ValueError):
+                load_results_checkpoint(path, ["different-model"], {"zero": 0}, ["1", "2"])
 
     def test_scoring_keeps_failures_in_denominator_and_matrix(self):
         results = pd.DataFrame(
