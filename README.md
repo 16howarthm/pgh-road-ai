@@ -44,4 +44,9 @@ Run checks with `python -m unittest discover -s tests`.
 Use `category_analysis.ipynb` or import `road_ai.py`. The first notebook run creates and saves a balanced 120-row prompt-development split and 180-row held-out split in `category_splits/`; later runs load those fixed records. Exact normalized descriptions that occur with conflicting labels are excluded and counted in `split_audit.json`. The zero-, one-, and several-example conditions contain exactly 0, 1, and 6 labeled examples total, and every model/condition is scored on all 180 held-out records. Results, summaries, and all confusion matrices are written to `category_results/`.
 
 ### Google Colab
-Open `category_analysis.ipynb` from the GitHub repository in Colab and run it from top to bottom. The setup cell clones the repository when necessary, changes to the repository root, and installs only the three experiment dependencies (`pandas`, `scikit-learn`, and `openai`). Add `OPENROUTER_API_KEY` in Colab's **Secrets** panel and enable notebook access before running the model-comparison cell. Outputs are written to `/content/pgh-road-ai/category_results/`; download that directory before ending the runtime if the results need to persist.
+Because the repository is private, add both of these values in Colab's **Secrets** panel and enable notebook access for each one before running the notebook:
+
+- `GITHUB_TOKEN`: a fine-grained GitHub personal access token limited to `16howarthm/pgh-road-ai`, with read-only repository Contents access.
+- `OPENROUTER_API_KEY`: the OpenRouter API key used for model calls.
+
+Open or upload `category_analysis.ipynb` in Colab and run it from top to bottom. The setup cell securely supplies `GITHUB_TOKEN` to Git only for the private clone request; it does not print the token, put it in the clone URL, or save it in the repository's Git configuration. The cell then changes to the repository root and installs only the three experiment dependencies (`pandas`, `scikit-learn`, and `openai`). Outputs are written to `/content/pgh-road-ai/category_results/`; download that directory before ending the runtime if the results need to persist.
