@@ -16,40 +16,12 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 DEFAULT_CATEGORIES = ["MACHINERY", "DEMOLITION DUMPSTER", "CRANE", "BARRICADE", "MATERIALS", "SCAFFOLD"]
 NORMALIZED_DESCRIPTION_COL = "normalized_description"
 FAILED_PREDICTION = "__FAILED__"
-RESULT_KEY_COLUMNS = ["model", "prompt_condition", "permit_id"]
-LLAMA_SCOUT_MODEL = "meta-llama/llama-4-scout"
 MODEL_PROVIDER_ROUTING = {
-    LLAMA_SCOUT_MODEL: {
+    "meta-llama/llama-4-scout": {
         "only": ["google-vertex"],
         "require_parameters": True,
     }
 }
-
-__all__ = [
-    "DEFAULT_CATEGORIES",
-    "NORMALIZED_DESCRIPTION_COL",
-    "FAILED_PREDICTION",
-    "RESULT_KEY_COLUMNS",
-    "LLAMA_SCOUT_MODEL",
-    "MODEL_PROVIDER_ROUTING",
-    "openrouter_client",
-    "dedupe_permits",
-    "prepare_eligible_data",
-    "balanced_sample",
-    "validate_splits",
-    "split_prompt_test",
-    "save_fixed_splits",
-    "load_fixed_splits",
-    "make_examples",
-    "classification_prompt",
-    "classify_one",
-    "save_results_checkpoint",
-    "load_results_checkpoint",
-    "completed_result_keys",
-    "remove_model_routing_failures",
-    "run_experiment",
-    "score_results",
-]
 
 
 def _normalize_text(value) -> str:
@@ -70,9 +42,9 @@ def _stable_key(seed: int, purpose: str, *values) -> str:
 
 
 def openrouter_client(api_key: Optional[str] = None):
-    key = api_key or os.getenv("OPENROUTER_API_KEY")
+    key = api_key or os.getenv("openrouter_api_key")
     if not key:
-        raise ValueError("Set OPENROUTER_API_KEY or pass api_key.")
+        raise ValueError("Set openrouter_api_key or pass api_key.")
     return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
 
 
@@ -311,77 +283,6 @@ def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=Non
     obj["prompt_tokens"] = getattr(resp.usage, "prompt_tokens", None)
     obj["completion_tokens"] = getattr(resp.usage, "completion_tokens", None)
     return obj
-
-
-def save_results_checkpoint(results, path):
-    """Atomically save one row per model/prompt/permit experiment key."""
-    _require_columns(results, RESULT_KEY_COLUMNS)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    checkpoint = (
-        results.drop_duplicates(RESULT_KEY_COLUMNS, keep="last")
-        .sort_values(RESULT_KEY_COLUMNS, kind="stable")
-        .reset_index(drop=True)
-    )
-    temporary_path = path.with_name(f".{path.name}.tmp")
-    checkpoint.to_csv(temporary_path, index=False)
-    os.replace(temporary_path, path)
-    return checkpoint
-
-
-def load_results_checkpoint(path, models, prompt_conditions, permit_ids):
-    """Load and validate resumable results for the configured experiment."""
-    path = Path(path)
-    if not path.exists():
-        return pd.DataFrame()
-
-    results = pd.read_csv(path)
-    _require_columns(results, [*RESULT_KEY_COLUMNS, "n_examples"])
-    results["model"] = results["model"].astype(str)
-    results["prompt_condition"] = results["prompt_condition"].astype(str)
-    results["permit_id"] = results["permit_id"].astype(str)
-
-    unknown_models = sorted(set(results["model"]) - set(models))
-    unknown_conditions = sorted(set(results["prompt_condition"]) - set(prompt_conditions))
-    unknown_permits = sorted(set(results["permit_id"]) - {str(value) for value in permit_ids})
-    if unknown_models or unknown_conditions or unknown_permits:
-        raise ValueError(
-            "Checkpoint does not match this experiment: "
-            f"models={unknown_models}, conditions={unknown_conditions}, permits={unknown_permits[:5]}"
-        )
-
-    expected_examples = results["prompt_condition"].map(prompt_conditions)
-    recorded_examples = pd.to_numeric(results["n_examples"], errors="coerce")
-    if not recorded_examples.eq(expected_examples).all():
-        raise ValueError("Checkpoint example counts do not match the configured prompt conditions.")
-
-    return (
-        results.drop_duplicates(RESULT_KEY_COLUMNS, keep="last")
-        .sort_values(RESULT_KEY_COLUMNS, kind="stable")
-        .reset_index(drop=True)
-    )
-
-
-def completed_result_keys(results):
-    if results.empty:
-        return set()
-    _require_columns(results, RESULT_KEY_COLUMNS)
-    return set(results[RESULT_KEY_COLUMNS].itertuples(index=False, name=None))
-
-
-def remove_model_routing_failures(results, model):
-    """Remove only saved 404/no-endpoint failures for one model so they can be retried."""
-    if results.empty:
-        return results.copy(), 0
-    _require_columns(results, ["model", "predicted", "error"])
-    errors = results["error"].fillna("").astype(str)
-    retry_mask = (
-        results["model"].astype(str).eq(str(model))
-        & results["predicted"].astype(str).eq(FAILED_PREDICTION)
-        & errors.str.contains("Error code: 404", case=False, regex=False)
-        & errors.str.contains("No endpoint", case=False, regex=False)
-    )
-    return results.loc[~retry_mask].reset_index(drop=True), int(retry_mask.sum())
 
 
 def run_experiment(
