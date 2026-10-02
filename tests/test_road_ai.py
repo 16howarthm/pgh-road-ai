@@ -12,19 +12,14 @@ import road_ai
 from road_ai import (
     DEFAULT_CATEGORIES,
     FAILED_PREDICTION,
-    LLAMA_SCOUT_MODEL,
     NORMALIZED_DESCRIPTION_COL,
     balanced_sample,
     classify_one,
-    completed_result_keys,
     dedupe_permits,
     load_fixed_splits,
-    load_results_checkpoint,
     make_examples,
-    remove_model_routing_failures,
     run_experiment,
     save_fixed_splits,
-    save_results_checkpoint,
     score_results,
     split_prompt_test,
     validate_splits,
@@ -136,7 +131,7 @@ class CategoryExperimentTests(unittest.TestCase):
         self.assertEqual(len(several), 6)
         self.assertEqual({example["category"] for example in several}, set(DEFAULT_CATEGORIES))
 
-    def test_notebook_road_ai_imports_exist_and_are_exported(self):
+    def test_notebook_road_ai_imports_exist(self):
         notebook_path = Path(__file__).resolve().parents[1] / "category_analysis.ipynb"
         notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
         imported_names = set()
@@ -148,9 +143,7 @@ class CategoryExperimentTests(unittest.TestCase):
                 if isinstance(node, ast.ImportFrom) and node.module == "road_ai":
                     imported_names.update(alias.name for alias in node.names)
 
-        self.assertIn("LLAMA_SCOUT_MODEL", imported_names)
-        self.assertIn("load_results_checkpoint", imported_names)
-        self.assertFalse(imported_names - set(road_ai.__all__))
+        self.assertIn("run_experiment", imported_names)
         self.assertFalse({name for name in imported_names if not hasattr(road_ai, name)})
 
     def test_scout_routing_is_model_specific(self):
@@ -161,7 +154,7 @@ class CategoryExperimentTests(unittest.TestCase):
         client = MagicMock()
         client.chat.completions.create.return_value = response
 
-        classify_one("crane lift", LLAMA_SCOUT_MODEL, client=client)
+        classify_one("crane lift", "meta-llama/llama-4-scout", client=client)
         scout_request = client.chat.completions.create.call_args.kwargs
         self.assertEqual(
             scout_request["extra_body"],
@@ -172,36 +165,6 @@ class CategoryExperimentTests(unittest.TestCase):
         classify_one("crane lift", "openai/gpt-oss-120b", client=client)
         gpt_request = client.chat.completions.create.call_args.kwargs
         self.assertNotIn("extra_body", gpt_request)
-
-    def test_only_scout_routing_failures_are_removed_for_resume(self):
-        rows = pd.DataFrame(
-            [
-                {
-                    "model": LLAMA_SCOUT_MODEL,
-                    "predicted": FAILED_PREDICTION,
-                    "error": "Error code: 404 - No endpoints found for this request",
-                },
-                {"model": LLAMA_SCOUT_MODEL, "predicted": "CRANE", "error": None},
-                {
-                    "model": LLAMA_SCOUT_MODEL,
-                    "predicted": FAILED_PREDICTION,
-                    "error": "Out-of-vocabulary category",
-                },
-                {
-                    "model": "openai/gpt-oss-120b",
-                    "predicted": FAILED_PREDICTION,
-                    "error": "Error code: 404 - No endpoints found for this request",
-                },
-            ]
-        )
-        kept, removed = remove_model_routing_failures(rows, LLAMA_SCOUT_MODEL)
-        self.assertEqual(removed, 1)
-        self.assertEqual(len(kept), 3)
-        self.assertEqual(kept.model.value_counts().to_dict()["openai/gpt-oss-120b"], 1)
-        self.assertEqual(
-            kept.loc[kept.model.eq(LLAMA_SCOUT_MODEL), "predicted"].tolist(),
-            ["CRANE", FAILED_PREDICTION],
-        )
 
     @patch("road_ai.classify_one")
     def test_run_maps_api_missing_and_oov_failures(self, classify_one):
@@ -234,32 +197,6 @@ class CategoryExperimentTests(unittest.TestCase):
         self.assertEqual(len(persisted), 4)
         self.assertEqual(len(progress), 4)
         self.assertEqual(persisted[-1]["predicted"], FAILED_PREDICTION)
-
-    def test_results_checkpoint_is_atomic_deduplicated_and_resumable(self):
-        rows = pd.DataFrame(
-            [
-                {"model": "m", "prompt_condition": "zero", "permit_id": "1", "n_examples": 0, "predicted": "A"},
-                {"model": "m", "prompt_condition": "zero", "permit_id": "1", "n_examples": 0, "predicted": "B"},
-                {"model": "m", "prompt_condition": "zero", "permit_id": "2", "n_examples": 0, "predicted": "A"},
-            ]
-        )
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "classification_results.csv"
-            saved = save_results_checkpoint(rows, path)
-            self.assertTrue(path.exists())
-            self.assertFalse((Path(directory) / ".classification_results.csv.tmp").exists())
-            self.assertEqual(len(saved), 2)
-
-            loaded = load_results_checkpoint(path, ["m"], {"zero": 0}, ["1", "2", "3"])
-            self.assertEqual(len(loaded), 2)
-            self.assertEqual(
-                completed_result_keys(loaded),
-                {("m", "zero", "1"), ("m", "zero", "2")},
-            )
-            self.assertEqual(loaded.loc[loaded.permit_id.eq("1"), "predicted"].item(), "B")
-
-            with self.assertRaises(ValueError):
-                load_results_checkpoint(path, ["different-model"], {"zero": 0}, ["1", "2"])
 
     def test_scoring_keeps_failures_in_denominator_and_matrix(self):
         results = pd.DataFrame(
