@@ -146,7 +146,26 @@ class CategoryExperimentTests(unittest.TestCase):
         self.assertIn("run_experiment", imported_names)
         self.assertFalse({name for name in imported_names if not hasattr(road_ai, name)})
 
-    def test_scout_routing_is_model_specific(self):
+    def test_notebook_runs_the_complete_fresh_experiment(self):
+        notebook_path = Path(__file__).resolve().parents[1] / "category_analysis.ipynb"
+        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+        source = "\n".join(
+            "".join(cell.get("source", []))
+            for cell in notebook["cells"]
+            if cell.get("cell_type") == "code"
+        )
+        self.assertIn("for model in MODELS:", source)
+        self.assertIn("assert len(results) == 1080", source)
+        self.assertIn("assert len(combination_sizes) == 6", source)
+        self.assertNotIn("select_scout_routing_failures", source)
+        for filename in [
+            "classification_results.csv",
+            "classification_summary.csv",
+            "confusion_matrices.csv",
+        ]:
+            self.assertIn(filename, source)
+
+    def test_scout_uses_automatic_routing_without_structured_output(self):
         response = SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content='{"category":"CRANE"}'))],
             usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
@@ -156,15 +175,16 @@ class CategoryExperimentTests(unittest.TestCase):
 
         classify_one("crane lift", "meta-llama/llama-4-scout", client=client)
         scout_request = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(
-            scout_request["extra_body"],
-            {"provider": {"only": ["google-vertex"], "require_parameters": True}},
-        )
+        self.assertNotIn("extra_body", scout_request)
+        self.assertNotIn("response_format", scout_request)
+        self.assertEqual(scout_request["temperature"], 0)
 
         client.chat.completions.create.reset_mock()
         classify_one("crane lift", "openai/gpt-oss-120b", client=client)
         gpt_request = client.chat.completions.create.call_args.kwargs
         self.assertNotIn("extra_body", gpt_request)
+        self.assertEqual(gpt_request["response_format"], {"type": "json_object"})
+        self.assertEqual(gpt_request["temperature"], 0)
 
     @patch("road_ai.classify_one")
     def test_run_maps_api_missing_and_oov_failures(self, classify_one):

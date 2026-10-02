@@ -16,12 +16,6 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 DEFAULT_CATEGORIES = ["MACHINERY", "DEMOLITION DUMPSTER", "CRANE", "BARRICADE", "MATERIALS", "SCAFFOLD"]
 NORMALIZED_DESCRIPTION_COL = "normalized_description"
 FAILED_PREDICTION = "__FAILED__"
-MODEL_PROVIDER_ROUTING = {
-    "meta-llama/llama-4-scout": {
-        "only": ["google-vertex"],
-        "require_parameters": True,
-    }
-}
 
 
 def _normalize_text(value) -> str:
@@ -257,11 +251,10 @@ def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=Non
             {"role": "system", "content": classification_prompt(categories, examples)},
             {"role": "user", "content": str(description)},
         ],
-        "response_format": {"type": "json_object"},
         "temperature": 0,
     }
-    if model in MODEL_PROVIDER_ROUTING:
-        request["extra_body"] = {"provider": MODEL_PROVIDER_ROUTING[model]}
+    if model != "meta-llama/llama-4-scout":
+        request["response_format"] = {"type": "json_object"}
 
     resp = client.chat.completions.create(
         **request,
