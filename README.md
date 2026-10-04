@@ -47,3 +47,21 @@ Use `category_analysis.ipynb` or import `road_ai.py`. The first notebook run cre
 Add `jetstream_api_key` in Colab's **Secrets** panel and enable notebook access before running the notebook.
 
 Open or upload `category_analysis.ipynb` in a fresh Colab runtime and run it from top to bottom. The setup cell anonymously clones the public `main` branch into `/content/pgh-road-ai`, installs `pandas`, `scikit-learn`, and `openai`, and loads `jetstream_api_key`. Results are written to `/content/pgh-road-ai/category_results/`; download that directory before ending the runtime if the results need to persist.
+
+## Classifier demo
+
+`classifier_demo.py` is a small standalone Streamlit interface for classifying one street-closure work description. It reuses the winning experiment configuration: Jetstream `llama-4-scout` with the deterministic six-example prompt selected from the saved development split. Jetstream requests use `https://llm.jetstream-cloud.org/api/`.
+
+For local use, add the following to `.streamlit/secrets.toml`:
+
+```toml
+jetstream_api_key = "your-jetstream-api-key"
+```
+
+Then run:
+
+```bash
+streamlit run classifier_demo.py
+```
+
+To deploy on Streamlit Community Cloud, create an app from this public GitHub repository, select `classifier_demo.py` as the entry point, add `jetstream_api_key` under the app's **Secrets** settings, and deploy. The classifier demo is separate from the accountability dashboard.
