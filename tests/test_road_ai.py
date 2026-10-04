@@ -158,6 +158,11 @@ class CategoryExperimentTests(unittest.TestCase):
         self.assertIn("assert len(results) == 1080", source)
         self.assertIn("assert len(combination_sizes) == 6", source)
         self.assertNotIn("select_scout_routing_failures", source)
+        self.assertNotIn("GITHUB_TOKEN", source)
+        self.assertNotIn("extraheader", source)
+        self.assertNotIn('"git", "ls-remote"', source)
+        self.assertIn('"git", "clone"', source)
+        self.assertIn('userdata.get("openrouter_api_key")', source)
         for filename in [
             "classification_results.csv",
             "classification_summary.csv",
