@@ -35,11 +35,11 @@ def _stable_key(seed: int, purpose: str, *values) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def openrouter_client(api_key: Optional[str] = None):
-    key = api_key or os.getenv("openrouter_api_key")
+def jetstream_client(api_key: Optional[str] = None):
+    key = api_key or os.getenv("jetstream_api_key")
     if not key:
-        raise ValueError("Set openrouter_api_key or pass api_key.")
-    return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+        raise ValueError("Set jetstream_api_key or pass api_key.")
+    return OpenAI(base_url="https://llm.jetstream-cloud.org/api/", api_key=key)
 
 
 def dedupe_permits(df: pd.DataFrame) -> pd.DataFrame:
@@ -244,7 +244,7 @@ Confidence must be between 0 and 1.
 
 
 def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=None, client=None):
-    client = client or openrouter_client()
+    client = client or jetstream_client()
     request = {
         "model": model,
         "messages": [
@@ -253,8 +253,9 @@ def classify_one(description, model, categories=DEFAULT_CATEGORIES, examples=Non
         ],
         "temperature": 0,
     }
-    if model != "meta-llama/llama-4-scout":
+    if model == "gpt-oss-120b":
         request["response_format"] = {"type": "json_object"}
+        request["reasoning_effort"] = "low"
 
     resp = client.chat.completions.create(
         **request,
@@ -290,7 +291,7 @@ def run_experiment(
     progress_callback=None,
 ):
     rows = []
-    client = client or openrouter_client()
+    client = client or jetstream_client()
     labels = {_normalize_text(value) for value in categories}
     for _, row in test_df.iterrows():
         result = {

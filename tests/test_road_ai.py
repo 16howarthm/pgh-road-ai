@@ -16,6 +16,7 @@ from road_ai import (
     balanced_sample,
     classify_one,
     dedupe_permits,
+    jetstream_client,
     load_fixed_splits,
     make_examples,
     run_experiment,
@@ -162,7 +163,11 @@ class CategoryExperimentTests(unittest.TestCase):
         self.assertNotIn("extraheader", source)
         self.assertNotIn('"git", "ls-remote"', source)
         self.assertIn('"git", "clone"', source)
-        self.assertIn('userdata.get("openrouter_api_key")', source)
+        self.assertIn('userdata.get("jetstream_api_key")', source)
+        self.assertNotIn("openrouter_api_key", source)
+        self.assertIn('MODELS = ["llama-4-scout", "gpt-oss-120b"]', source)
+        self.assertNotIn("meta-llama/llama-4-scout", source)
+        self.assertNotIn("openai/gpt-oss-120b", source)
         for filename in [
             "classification_results.csv",
             "classification_summary.csv",
@@ -178,18 +183,28 @@ class CategoryExperimentTests(unittest.TestCase):
         client = MagicMock()
         client.chat.completions.create.return_value = response
 
-        classify_one("crane lift", "meta-llama/llama-4-scout", client=client)
+        classify_one("crane lift", "llama-4-scout", client=client)
         scout_request = client.chat.completions.create.call_args.kwargs
         self.assertNotIn("extra_body", scout_request)
         self.assertNotIn("response_format", scout_request)
+        self.assertNotIn("reasoning_effort", scout_request)
         self.assertEqual(scout_request["temperature"], 0)
 
         client.chat.completions.create.reset_mock()
-        classify_one("crane lift", "openai/gpt-oss-120b", client=client)
+        classify_one("crane lift", "gpt-oss-120b", client=client)
         gpt_request = client.chat.completions.create.call_args.kwargs
         self.assertNotIn("extra_body", gpt_request)
         self.assertEqual(gpt_request["response_format"], {"type": "json_object"})
+        self.assertEqual(gpt_request["reasoning_effort"], "low")
         self.assertEqual(gpt_request["temperature"], 0)
+
+    @patch("road_ai.OpenAI")
+    def test_jetstream_client_uses_exact_base_url_and_secret(self, openai):
+        with patch.dict(road_ai.os.environ, {"jetstream_api_key": "secret"}, clear=True):
+            jetstream_client()
+        openai.assert_called_once_with(
+            base_url="https://llm.jetstream-cloud.org/api/", api_key="secret"
+        )
 
     @patch("road_ai.classify_one")
     def test_run_maps_api_missing_and_oov_failures(self, classify_one):
