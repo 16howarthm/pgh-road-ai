@@ -2,7 +2,7 @@
 
 Two prototypes aligned to the project proposal:
 
-1. **Category-analysis experiment** (`road_ai.py` + notebook): balanced sampling, permit/description de-duplication, stratified prompt-development/test split, zero-/one-/few-shot OpenRouter classification, accuracy/macro-F1/confusion matrices, token counts, and model comparison.
+1. **Category-analysis experiment** (`road_ai.py` + notebook): balanced sampling, permit/description de-duplication, stratified prompt-development/test split, zero-/one-/few-shot Jetstream classification, accuracy/macro-F1/confusion matrices, token counts, and model comparison.
 2. **Public accountability dashboard** (`dashboard.py`): flags schedules whose recorded `to_date` has passed, maps road segments, provides a permit-level queue, summarizes patterns, and optionally asks an OpenRouter model for a cautious accountability analysis.
 
 ## Important data caveats
@@ -44,6 +44,6 @@ Run checks with `python -m unittest discover -s tests`.
 Use `category_analysis.ipynb` or import `road_ai.py`. The first notebook run creates and saves a balanced 120-row prompt-development split and 180-row held-out split in `category_splits/`; later runs load those fixed records. Exact normalized descriptions that occur with conflicting labels are excluded and counted in `split_audit.json`. The zero-, one-, and several-example conditions contain exactly 0, 1, and 6 labeled examples total, and every model/condition is scored on all 180 held-out records. Results, summaries, and all confusion matrices are written to `category_results/`.
 
 ### Google Colab
-Add `openrouter_api_key` in Colab's **Secrets** panel and enable notebook access before running the notebook.
+Add `jetstream_api_key` in Colab's **Secrets** panel and enable notebook access before running the notebook.
 
-Open or upload `category_analysis.ipynb` in a fresh Colab runtime and run it from top to bottom. The setup cell anonymously clones the public `main` branch into `/content/pgh-road-ai`, installs `pandas`, `scikit-learn`, and `openai`, and loads `openrouter_api_key`. Results are written to `/content/pgh-road-ai/category_results/`; download that directory before ending the runtime if the results need to persist.
+Open or upload `category_analysis.ipynb` in a fresh Colab runtime and run it from top to bottom. The setup cell anonymously clones the public `main` branch into `/content/pgh-road-ai`, installs `pandas`, `scikit-learn`, and `openai`, and loads `jetstream_api_key`. Results are written to `/content/pgh-road-ai/category_results/`; download that directory before ending the runtime if the results need to persist.
