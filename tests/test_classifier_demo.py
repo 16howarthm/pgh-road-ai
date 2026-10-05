@@ -1,5 +1,6 @@
 import unittest
 from contextlib import nullcontext
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -94,22 +95,126 @@ class ClassifierDemoTests(unittest.TestCase):
         )
 
     @patch("classifier_demo.jetstream_client")
+    def test_streamlit_path_uses_jetstream_client_without_sdk_retries(
+        self, jetstream_client
+    ):
+        request_client = MagicMock()
+        request_client.chat.completions.create.return_value = self.response(
+            '{"category":"CRANE"}'
+        )
+        jetstream_client.return_value.with_options.return_value = request_client
+
+        category = classifier_demo.classify_description(
+            "crane lift", api_key="secret"
+        )
+
+        self.assertEqual(category, "CRANE")
+        jetstream_client.assert_called_once_with("secret")
+        jetstream_client.return_value.with_options.assert_called_once_with(
+            max_retries=0
+        )
+        source = Path(classifier_demo.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("openrouter", source.lower())
+
+    @patch("classifier_demo.jetstream_client")
     def test_blank_input_does_not_create_client_or_call_api(self, jetstream_client):
         with self.assertRaisesRegex(ValueError, "Enter a work description"):
             classifier_demo.classify_description("   ", api_key="secret")
         jetstream_client.assert_not_called()
 
-    def test_invalid_and_out_of_vocabulary_output_fail(self):
+    @patch("classifier_demo.time.sleep")
+    def test_invalid_and_out_of_vocabulary_output_never_fall_back(self, sleep):
         client = MagicMock()
         client.chat.completions.create.return_value = self.response("not JSON")
-        with self.assertRaisesRegex(ValueError, "missing a category"):
+        with self.assertRaises(classifier_demo.InvalidModelOutputError):
             classifier_demo.classify_description("street work", client=client)
+        self.assertEqual(client.chat.completions.create.call_count, 2)
 
+        client.reset_mock()
         client.chat.completions.create.return_value = self.response(
             '{"category":"OTHER"}'
         )
-        with self.assertRaisesRegex(ValueError, "Out-of-vocabulary"):
+        with self.assertRaises(classifier_demo.InvalidModelOutputError):
             classifier_demo.classify_description("street work", client=client)
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+        sleep.assert_called()
+
+    @patch("classifier_demo.time.sleep")
+    def test_503_then_success_retries_and_returns_category(self, sleep):
+        unavailable = RuntimeError("provider body must not be shown")
+        unavailable.status_code = 503
+        client = MagicMock()
+        client.chat.completions.create.side_effect = [
+            unavailable,
+            self.response('{"category":"CRANE"}'),
+        ]
+
+        category = classifier_demo.classify_description(
+            "crane lift", client=client
+        )
+
+        self.assertEqual(category, "CRANE")
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+        sleep.assert_called_once_with(1)
+
+    @patch("classifier_demo.time.sleep")
+    def test_timeout_then_success_retries_and_returns_category(self, sleep):
+        client = MagicMock()
+        client.chat.completions.create.side_effect = [
+            TimeoutError("sensitive timeout details"),
+            self.response('{"category":"MATERIALS"}'),
+        ]
+
+        category = classifier_demo.classify_description(
+            "material staging", client=client
+        )
+
+        self.assertEqual(category, "MATERIALS")
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+        sleep.assert_called_once_with(1)
+
+    @patch("classifier_demo.time.sleep")
+    def test_repeated_transient_failures_stop_after_three_attempts(self, sleep):
+        unavailable = RuntimeError("sensitive provider details")
+        unavailable.status_code = 503
+        client = MagicMock()
+        client.chat.completions.create.side_effect = unavailable
+
+        with self.assertRaises(classifier_demo.JetstreamUnavailableError):
+            classifier_demo.classify_description("street work", client=client)
+
+        self.assertEqual(client.chat.completions.create.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+
+    @patch("classifier_demo.time.sleep")
+    def test_authentication_failure_does_not_retry(self, sleep):
+        for status in (401, 403):
+            with self.subTest(status=status):
+                denied = RuntimeError("secret provider response")
+                denied.status_code = status
+                client = MagicMock()
+                client.chat.completions.create.side_effect = denied
+
+                with self.assertRaises(classifier_demo.JetstreamAccessError):
+                    classifier_demo.classify_description(
+                        "street work", client=client
+                    )
+
+                client.chat.completions.create.assert_called_once()
+        sleep.assert_not_called()
+
+    @patch("classifier_demo.time.sleep")
+    def test_repeated_rate_limits_use_specific_error(self, sleep):
+        rate_limited = RuntimeError("provider response body")
+        rate_limited.status_code = 429
+        client = MagicMock()
+        client.chat.completions.create.side_effect = rate_limited
+
+        with self.assertRaises(classifier_demo.JetstreamRateLimitError):
+            classifier_demo.classify_description("street work", client=client)
+
+        self.assertEqual(client.chat.completions.create.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
 
     def test_mocked_classification_renders_valid_category(self):
         streamlit = FakeStreamlit()
@@ -140,14 +245,28 @@ class ClassifierDemoTests(unittest.TestCase):
         with patch.object(classifier_demo, "st", streamlit), patch.object(
             classifier_demo,
             "classify_description",
-            side_effect=RuntimeError("sensitive provider details"),
+            side_effect=classifier_demo.JetstreamUnavailableError,
         ):
             classifier_demo.main()
 
         self.assertEqual(
-            streamlit.errors, ["Classification failed. Please try again."]
+            streamlit.errors,
+            ["Jetstream is temporarily unavailable. Please try again shortly."],
         )
-        self.assertNotIn("sensitive provider details", " ".join(streamlit.errors))
+
+    def test_authentication_failure_shows_actionable_safe_error(self):
+        streamlit = FakeStreamlit()
+        with patch.object(classifier_demo, "st", streamlit), patch.object(
+            classifier_demo,
+            "classify_description",
+            side_effect=classifier_demo.JetstreamAccessError,
+        ):
+            classifier_demo.main()
+
+        self.assertEqual(
+            streamlit.errors,
+            ["Jetstream rejected API access. Check the app's Jetstream secret."],
+        )
 
     def test_allowed_categories_are_unchanged(self):
         self.assertEqual(
