@@ -1,6 +1,8 @@
+import logging
 from pathlib import Path
 
 import streamlit as st
+from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 from road_ai import (
     DEFAULT_CATEGORIES,
@@ -12,6 +14,29 @@ from road_ai import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+logger = logging.getLogger(__name__)
+
+
+def classification_error_message(exc):
+    """Describe actionable failures without exposing credentials or provider bodies."""
+    if isinstance(exc, APITimeoutError):
+        return "Jetstream took too long to respond. Please try again shortly."
+    if isinstance(exc, APIConnectionError):
+        return "Cannot connect to Jetstream. Please try again shortly."
+    if isinstance(exc, APIStatusError):
+        if exc.status_code in (401, 403):
+            return "Jetstream rejected API access. Check jetstream_api_key in the app's Secrets settings."
+        if exc.status_code == 429:
+            return "Jetstream is rate limiting requests. Please try again shortly."
+        if exc.status_code >= 500:
+            return (
+                f"Jetstream is temporarily unavailable (HTTP {exc.status_code}). "
+                "Please try again after the service recovers."
+            )
+        return "Jetstream rejected the classification request. The app administrator should check the model configuration."
+    if isinstance(exc, ValueError):
+        return "The model did not return a valid category. Please try again."
+    return "Classification failed. Please try again."
 
 
 def classify_description(description, api_key=None, client=None):
@@ -69,8 +94,15 @@ def main():
     try:
         with st.spinner("Classifying..."):
             category = classify_description(description, api_key=api_key)
-    except Exception:
-        st.error("Classification failed. Please try again.")
+    except Exception as exc:
+        # Do not log the exception body: it may contain the submitted description
+        # or sensitive provider details. Type and status identify infrastructure failures.
+        logger.error(
+            "Classification failed: type=%s status=%s",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+        )
+        st.error(classification_error_message(exc))
         return
 
     st.subheader("Predicted category")

@@ -1,4 +1,6 @@
 import unittest
+import httpx
+from openai import APIConnectionError, APIStatusError, APITimeoutError
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -161,6 +163,38 @@ class ClassifierDemoTests(unittest.TestCase):
                 "SCAFFOLD",
             ],
         )
+
+    def test_provider_failures_show_actionable_errors_without_response_body(self):
+        request = httpx.Request("POST", "https://llm.jetstream-cloud.org/api/chat/completions")
+        for status, expected in [(502, "temporarily unavailable (HTTP 502)"),
+                                 (401, "Check jetstream_api_key"),
+                                 (403, "Check jetstream_api_key"),
+                                 (429, "rate limiting"),
+                                 (400, "check the model configuration")]:
+            with self.subTest(status=status):
+                exc = APIStatusError(
+                    "sensitive provider details",
+                    response=httpx.Response(status, request=request),
+                    body={"secret": "sensitive provider details"},
+                )
+                streamlit = FakeStreamlit()
+                with patch.object(classifier_demo, "st", streamlit), patch.object(
+                    classifier_demo, "classify_description", side_effect=exc
+                ), self.assertLogs(classifier_demo.logger, level="ERROR") as logs:
+                    classifier_demo.main()
+                self.assertIn(expected, streamlit.errors[0])
+                self.assertIn(f"status={status}", " ".join(logs.output))
+                self.assertNotIn("sensitive provider details", " ".join(streamlit.errors + logs.output))
+
+    def test_connection_timeout_and_invalid_output_messages(self):
+        request = httpx.Request("POST", "https://llm.jetstream-cloud.org/api/chat/completions")
+        for exc, expected in [
+            (APIConnectionError(request=request), "Cannot connect"),
+            (APITimeoutError(request=request), "too long"),
+            (ValueError("Out-of-vocabulary category"), "valid category"),
+        ]:
+            with self.subTest(error=type(exc).__name__):
+                self.assertIn(expected, classifier_demo.classification_error_message(exc))
 
 
 if __name__ == "__main__":

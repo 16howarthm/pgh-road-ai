@@ -65,3 +65,20 @@ streamlit run classifier_demo.py
 ```
 
 To deploy on Streamlit Community Cloud, create an app from this public GitHub repository, select `classifier_demo.py` as the entry point, add `jetstream_api_key` under the app's **Secrets** settings, and deploy. The classifier demo is separate from the accountability dashboard.
+
+If every classification fails, check the displayed provider error and the Community Cloud app logs. HTTP 502/503 errors indicate a Jetstream service failure; retry after the provider recovers. HTTP 401/403 errors require checking the app's `jetstream_api_key` secret. The public proxy URL above is the documented endpoint for Community Cloud; Jetstream's direct model endpoints require a Jetstream instance or a tunnel and are not a replacement for this URL on Streamlit Cloud. Logs record the exception type and HTTP status without recording descriptions, API keys, or provider response bodies.
+
+## Vercel backup classifier
+
+Live page: https://pgh-road-ai-backup.vercel.app/
+
+Run `.venv/bin/python classifier_demo_vercel.py` from the repository root, then open http://localhost:8000. Local execution loads `OPENROUTER_API_KEY` from `.env.local` when python-dotenv is installed, or from the environment. This backup uses OpenRouter rather than Jetstream, with `meta-llama/llama-4-scout` and provider fallback enabled. `CLASSIFIER_MODEL` can override the model independently of the dashboard. Provider access may incur charges. The six-example system prompt is frozen in `vercel_classifier/prompt.json`; a test checks it against the evaluated development split. Provider changes have not been accuracy-evaluated.
+
+The Vercel project root is `vercel_classifier/`. Only the static page in `public/` is served as static content; `api/classify.py` runs the Python backend. Keep `OPENROUTER_API_KEY` in the Vercel project's production environment variables, never in the browser code. After changing an environment variable, redeploy. To update manually:
+
+```bash
+cd vercel_classifier
+npx vercel deploy --prod
+```
+
+The initial live test on October 5, 2026 confirmed the page and API routes work, but OpenRouter rejected classification because the configured key's total spending limit was exceeded. Adjust that key's limit in OpenRouter or replace the Vercel environment variable with a funded key, then redeploy if the environment variable changed. The app does not alter provider spending limits. Input length, response size, and request duration are bounded, but there is no persistent application rate limiter; configure provider spending limits and Vercel Firewall rules for public use.
