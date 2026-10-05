@@ -72,13 +72,16 @@ If every classification fails, check the displayed provider error and the Commun
 
 Live page: https://pgh-road-ai-backup.vercel.app/
 
-Run `.venv/bin/python classifier_demo_vercel.py` from the repository root, then open http://localhost:8000. Local execution loads `OPENROUTER_API_KEY` from `.env.local` when python-dotenv is installed, or from the environment. This backup uses OpenRouter rather than Jetstream, with `meta-llama/llama-4-scout` and provider fallback enabled. `CLASSIFIER_MODEL` can override the model independently of the dashboard. Provider access may incur charges. The six-example system prompt is frozen in `vercel_classifier/prompt.json`; a test checks it against the evaluated development split. Provider changes have not been accuracy-evaluated.
+Run `.venv/bin/python classifier_demo_vercel.py` from the repository root, then open http://localhost:8000. Local execution loads keys from `.env.local` when python-dotenv is installed, or from the environment. The page defaults to **OpenAI / gpt-4.1-mini**. Choose a provider to use its saved server-side key, then select a model or enter a custom chat model ID. There is no automatic switch to another provider; each test uses your explicit selection.
 
-The Vercel project root is `vercel_classifier/`. Only the static page in `public/` is served as static content; `api/classify.py` runs the Python backend. Keep `OPENROUTER_API_KEY` in the Vercel project's production environment variables, never in the browser code. After changing an environment variable, redeploy. To update manually:
+| Provider | Server environment variable | Example models |
+| --- | --- | --- |
+| OpenAI | `OPENAI_API_KEY` | `gpt-4.1-mini`, `gpt-4.1`, `gpt-4o-mini` |
+| OpenRouter | `OPENROUTER_API_KEY` | `meta-llama/llama-4-scout`, `deepseek/deepseek-v3.2`, `deepseek/deepseek-v4.1-flash` |
+| Jetstream | `JETSTREAM_API_KEY` | `llama-4-scout`, `gpt-oss-120b`, `muse-glimmer` |
 
-```bash
-cd vercel_classifier
-npx vercel deploy --prod
-```
+The model list changes with the provider. Custom model IDs must be supported by that provider's chat-completions API and accessible to your account. The old `CLASSIFIER_MODEL` environment variable is no longer used: model choice is explicit in the page. The six-example system prompt is frozen in `vercel_classifier/prompt.json`; a test checks it against the evaluated development split. New provider/model combinations have not been accuracy-evaluated.
 
-The initial live test on October 5, 2026 confirmed the page and API routes work, but OpenRouter rejected classification because the configured key's total spending limit was exceeded. Adjust that key's limit in OpenRouter or replace the Vercel environment variable with a funded key, then redeploy if the environment variable changed. The app does not alter provider spending limits. Input length, response size, and request duration are bounded, but there is no persistent application rate limiter; configure provider spending limits and Vercel Firewall rules for public use.
+The Vercel project root is `vercel_classifier/`. Only the static page in `public/` is served as static content. `api/classify.py` runs the Python backend; `api/config.py` returns available model presets and whether each key is configured, never key values. Keep all three keys in the Vercel project's production environment variables, never in browser code. After changing an environment variable, redeploy. To update through Git, commit and push changes to `main`; the connected Vercel project builds the `vercel_classifier/` root directory. For CLI deployments, upload the repository folder structure with `vercel_classifier/` inside it, matching the project root setting.
+
+On October 5, 2026, the live OpenAI default test reached the API but reported exhausted credits / insufficient quota. Earlier Jetstream tests returned HTTP 502 and OpenRouter reported a key spending limit. Configuration status means a key is present, not that credits or service availability have been verified. Provider outages and key/billing errors are displayed without exposing provider bodies. Input length, output tokens, and request duration are bounded, but there is no persistent application rate limiter. API usage may incur charges against the selected server-side key.
