@@ -10,6 +10,30 @@ from road_ai import classification_prompt, load_fixed_splits, make_examples, DEF
 
 
 class BackupClassifierTests(unittest.TestCase):
+    @patch.dict(os.environ, {'JETSTREAM_API_KEY': 'test-secret'}, clear=True)
+    @patch.object(backup, 'urlopen')
+    def test_reason_is_requested_and_returned_without_html_rendering(self, urlopen):
+        urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
+            'choices': [{'message': {'content': json.dumps({
+                'category': 'CRANE', 'reason': '  A crane lifts equipment.\nThis requires street space.  '
+            })}}]
+        }).encode())
+        result = backup.classify_description('crane lift', provider='jetstream')
+        self.assertEqual(result['reason'], 'A crane lifts equipment. This requires street space.')
+        prompt = json.loads(urlopen.call_args.args[0].data)['messages'][0]['content']
+        self.assertIn('1–2 short sentences', prompt)
+
+    @patch.dict(os.environ, {'JETSTREAM_API_KEY': 'test-secret'}, clear=True)
+    @patch.object(backup, 'urlopen')
+    def test_missing_or_invalid_reason_is_rejected(self, urlopen):
+        for reason in [None, '', '   ', 12, ['explanation']]:
+            urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
+                'choices': [{'message': {'content': json.dumps({'category': 'CRANE', 'reason': reason})}}]
+            }).encode())
+            with self.assertRaises(backup.ClassificationError) as error:
+                backup.classify_description('crane lift', provider='jetstream')
+            self.assertIn('explanation', str(error.exception))
+
     @patch.dict(os.environ, {'OPENAI_API_KEY': 'openai-secret',
                              'OPENROUTER_API_KEY': 'router-secret',
                              'JETSTREAM_API_KEY': 'jetstream-secret'}, clear=True)
@@ -21,14 +45,14 @@ class BackupClassifierTests(unittest.TestCase):
         for provider, model, key in cases:
             with self.subTest(provider=provider):
                 urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-                    'choices': [{'message': {'content': '{"category":"CRANE"}'}}]
+                    'choices': [{'message': {'content': '{"category":"CRANE","reason":"The description mentions a crane lift."}'}}]
                 }).encode())
                 result = backup.classify_description('crane lift', provider, model)
                 request = urlopen.call_args.args[0]
                 payload = json.loads(request.data)
                 self.assertEqual(request.get_header('Authorization'), 'Bearer ' + key)
                 self.assertEqual(request.full_url, backup.PROVIDERS[provider]['url'])
-                self.assertEqual(result, {'category': 'CRANE', 'provider': provider, 'model': model})
+                self.assertEqual(result, {'category': 'CRANE', 'reason': 'The description mentions a crane lift.', 'provider': provider, 'model': model})
                 self.assertEqual(payload['model'], model)
                 self.assertEqual('provider' in payload, provider == 'openrouter')
                 if provider == 'jetstream':
@@ -62,7 +86,7 @@ class BackupClassifierTests(unittest.TestCase):
     @patch.object(backup, 'urlopen')
     def test_custom_reasoning_model_does_not_send_temperature(self, urlopen):
         urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-            'choices': [{'message': {'content': '{"category":"CRANE"}'}}]
+            'choices': [{'message': {'content': '{"category":"CRANE","reason":"The description mentions a crane lift."}'}}]
         }).encode())
         backup.classify_description('crane lift', model='gpt-5-mini')
         self.assertNotIn('temperature', json.loads(urlopen.call_args.args[0].data))
@@ -104,7 +128,7 @@ class BackupClassifierTests(unittest.TestCase):
     @patch.object(backup, 'urlopen')
     def test_valid_category_and_provider_request(self, urlopen):
         urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-            'choices': [{'message': {'content': '```json\n{"category":"crane"}\n```'}}]
+            'choices': [{'message': {'content': '```json\n{"category":"crane","reason":"The description mentions a crane lift."}\n```'}}]
         }).encode())
         self.assertEqual(backup.classify_description(' crane lift ')['category'], 'CRANE')
         request = urlopen.call_args.args[0]

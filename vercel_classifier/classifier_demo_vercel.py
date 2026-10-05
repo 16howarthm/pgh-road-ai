@@ -70,7 +70,7 @@ def classify_description(description, provider='openai', model=None):
     if not key:
         raise ClassificationError(f"{config['label']} is not configured. The administrator must set {config['key_env']}.")
     payload = {'model': model, 'messages': [
-        {'role': 'system', 'content': PROMPT['system_prompt']},
+        {'role': 'system', 'content': PROMPT['system_prompt'] + '\nThe reason field must contain 1–2 short sentences explaining the category using only evidence in the description.'},
         {'role': 'user', 'content': description}]}
     if provider == 'openai':
         payload['max_completion_tokens'] = 2048
@@ -125,7 +125,11 @@ def classify_description(description, provider='openai', model=None):
             raise ValueError('Invalid category')
     except (KeyError, IndexError, TypeError, ValueError, AttributeError):
         raise ClassificationError('The model returned an invalid category. Please try again.', 502) from None
-    return {'category': category, 'model': model, 'provider': provider}
+    reason = result.get('reason')
+    if not isinstance(reason, str) or not reason.strip():
+        raise ClassificationError('The model did not return an explanation. Please try again.', 502)
+    reason = ' '.join(reason.split())
+    return {'category': category, 'reason': reason, 'model': model, 'provider': provider}
 
 
 class handler(BaseHTTPRequestHandler):

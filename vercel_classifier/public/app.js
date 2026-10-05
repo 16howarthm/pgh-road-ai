@@ -83,6 +83,7 @@ form.addEventListener('submit', async event => {
     catch { throw new Error('The service could not respond. Please try again shortly.'); }
     if (!response.ok) throw new Error(data.error || 'Classification failed. Please try again.');
     document.getElementById('category').textContent = data.category;
+    document.getElementById('reason').textContent = data.reason;
     document.getElementById('attribution').textContent =
       `${configuration.providers[data.provider].label} · ${data.model}`;
     result.hidden = false;
