@@ -2,14 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pittsburgh Street Closure Classifier</title>
+<title>Pittsburgh Street Closure Research & Classifier</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#142b35;background:#f2f5f4}*{box-sizing:border-box}body{margin:0}main{max-width:720px;margin:8vh auto;padding:32px}header{border-top:5px solid #d9ad48;padding-top:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;color:#526964}h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:16px 0}p{color:#52646c;line-height:1.6}form{background:white;border:1px solid #dce4e1;border-radius:16px;padding:24px;margin:28px 0}label{display:block;font-weight:650;margin-bottom:12px}textarea{width:100%;min-height:160px;border:1px solid #aebeba;border-radius:8px;padding:14px;font:inherit;resize:vertical}textarea:focus{outline:3px solid #d8ede4;border-color:#1e6653}button{background:#185943;color:white;border:0;border-radius:8px;padding:13px 22px;font:inherit;font-weight:650;cursor:pointer;margin-top:16px}button:disabled{opacity:.6;cursor:wait}.hint,footer{font-size:13px;color:#52646c}.result{border-radius:8px;background:#e6f3ec;padding:18px;margin-top:20px}.result strong{display:block;font-size:24px;margin-top:8px}.error{background:#fff0ea;color:#8b3520;padding:16px;border-radius:8px;margin-top:20px}[hidden]{display:none}.tags{font-size:12px;line-height:2;color:#52646c}footer{line-height:1.6}
 .settings{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}select,input{width:100%;border:1px solid #aebeba;border-radius:8px;padding:12px;font:inherit;background:white;color:#142b35}select:focus,input:focus{outline:3px solid #d8ede4;border-color:#1e6653}#custom-model-wrap{margin-bottom:16px}#attribution{display:block;margin-top:8px;font-size:13px;color:#52646c}@media(max-width:540px){.settings{grid-template-columns:1fr}main{padding:20px}form{padding:18px}}
 .reference{margin-top:32px}.reference h2{font-size:20px}.reference dl{margin:0}.reference dl div{padding:14px 0;border-bottom:1px solid #dce4e1}.reference dt{font-size:13px;font-weight:700;letter-spacing:.04em}.reference dd{margin:6px 0 0;color:#52646c;line-height:1.6;font-size:14px}#reason{margin:12px 0 0;color:#244f40}
+
+main{max-width:1180px;margin:30px auto}.site-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid #c6d7d1;padding-bottom:18px}.site-tabs button{margin:0;background:white;color:#185943;border:1px solid #aebeba}.site-tabs button[aria-selected=true]{background:#185943;color:white}#classifier-panel{max-width:720px;margin:auto}#briefing-frame{width:100%;border:0;min-height:1000px}button:focus-visible{outline:3px solid #b88c2e;outline-offset:3px}
 </style>
 </head>
 <body><main>
+<nav class="site-tabs" role="tablist" aria-label="Site sections">
+<button id="tab-classifier" role="tab" aria-selected="true" aria-controls="classifier-panel">Try the classifier</button>
+<button id="tab-closures" role="tab" aria-selected="false" aria-controls="briefing-panel">Closure accountability</button>
+<button id="tab-research" role="tab" aria-selected="false" aria-controls="briefing-panel">Category-analysis results</button>
+<button id="tab-population" role="tab" aria-selected="false" aria-controls="briefing-panel">Populating blank work types</button>
+</nav><section id="classifier-panel" role="tabpanel" aria-labelledby="tab-classifier">
 <header><div class="eyebrow">PITTSBURGH · STREET CLOSURES</div><h1>What kind of work<br>is happening?</h1><p>Enter a street-closure work description to predict its construction-staging category.</p></header>
 <form id="form">
 <div class="settings"><div><label for="provider">Provider / saved key</label><select id="provider" disabled><option value="openai">OpenAI</option></select></div><div><label for="model">Model</label><select id="model" disabled><option value="gpt-4.1-mini">gpt-4.1-mini</option></select></div></div>
@@ -24,4 +32,5 @@
 <div><dt>MATERIALS</dt><dd>Building supplies stored or staged in the street, such as lumber, steel, or other construction materials.</dd></div>
 <div><dt>SCAFFOLD</dt><dd>Scaffolding erected along a building for exterior work or access, occupying the sidewalk or street.</dd></div>
 </dl></section><footer><p>Six labeled examples · OpenAI selected by default.<br>Descriptions are sent to the selected AI provider. API usage may incur charges. Predictions may need human review.</p></footer>
-</main><script src="/app.js" defer></script></body></html>
+</section><section id="briefing-panel" role="tabpanel" hidden><iframe id="briefing-frame" title="Pittsburgh closure accountability and category-analysis briefing" loading="lazy"></iframe></section>
+</main><script src="/tabs.js" defer></script><script src="/app.js" defer></script></body></html>

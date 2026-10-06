@@ -1,0 +1,82 @@
+[
+  {
+    "permit_id": "DOMI-CS-2024-00203",
+    "description": "CCTV INSPECTION OF PWSA SEWERS.",
+    "wrong_alternatives": "MATERIALS / BARRICADE",
+    "category": "MACHINERY",
+    "explanation": "Reviewed errors treated sewer inspection, cable pulling and utility work as material handling or generic closures. Here CCTV inspection is an operational utility task, not delivery or storage of pipes. Choose MACHINERY. Sewer CCTV, lining/CIPP, manhole inspection/duct proofing and cable pulling share this operational pattern even when no machine is named. Do not infer BARRICADE merely because work occurs in the street.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2026-03701",
+    "description": "CLIMATECH INC. INSTALLING HVAC EQUIPMENT AT THE MAY BUILDING 111 5TH AVE. PGH PA 15222",
+    "wrong_alternatives": "MACHINERY / MATERIALS",
+    "category": "CRANE",
+    "explanation": "Reviewed errors classified HVAC installation as ordinary machinery or material delivery. This development permit is CRANE although the text does not explicitly say crane or lift. Large building HVAC placement is a dataset-specific lifting precedent. Contrast operational utility inspection (MACHINERY) and ground-level storage/delivery (MATERIALS). Infer the category cautiously; do not claim the description explicitly names a crane.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2023-10689",
+    "description": "STAGING MATERIALS AND EQUIPMENT FOR EDGERTON AVE PROJECT (CM 15647)",
+    "wrong_alternatives": "MACHINERY / BARRICADE",
+    "category": "MATERIALS",
+    "explanation": "Reviewed errors over-weighted machines or street occupancy when material staging was also stated. This labeled example says staging materials AND equipment and is MATERIALS: storage/laydown is the permit function, rather than equipment actively performing an inspection or lift. Mentioning equipment does not automatically override material staging; a street location alone does not establish BARRICADE.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2021-07474",
+    "description": "REPLACING SIDING AT 5613 HOWE STREET.  WILL NEED SPACE TO STAGE MATERIALS FOR APPROXIMATELY 2 WEEKS",
+    "wrong_alternatives": "DEMOLITION DUMPSTER / MACHINERY",
+    "category": "MATERIALS",
+    "explanation": "Reviewed siding and renovation descriptions were ambiguous between disposal and installing new materials. Here the explicit purpose is space to STAGE MATERIALS for two weeks, so MATERIALS. Contrast the roof-shingle-replacement disposal precedent below. Replacement alone is not a universal dumpster rule; explicit storage/delivery purpose is stronger evidence than the project title.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2024-08603",
+    "description": "THE PROJECT IS LOCATED AT THE HIGHMARK BUILDING (120 FIFTH AVE, PITTSBURGH, PA 15222). WE WOULD LIKE TO INSTALL A BARRICADE ALONG A PORTION OF STANWIX STREET, PENN AVENUE, AND A SMALL PORTION OF FIFTH AVENUE. THERE WILL BE A DUMPSTER AND MATERIAL LAYDOWN WITHIN THIS BARRICADE. THIS INCLUDES CLOSE A PORTION OF ONE OF THE LANES OF TRAFFIC ALONG STANWIX ST BETWEEN PENN AVE & LIBERTY AVENUE TO CREATE THIS LAYDOWN AREA. THIS WOULDN\u2019T REQUIRE DETOURING OF THE BIKE LANE OR CLOSURE OF ANYTHING ALONG PENN AVE BUT WILL CREATE A MERGE POINT AND RESTRICTED TRAFFIC FLOW TO A SINGLE LANE ALONG STANWIX FOR THIS HALF A BLOCK.",
+    "wrong_alternatives": "DEMOLITION DUMPSTER / MATERIALS",
+    "category": "BARRICADE",
+    "explanation": "Reviewed mixed construction sites were classified from one incidental noun such as crane, dumpster or materials. Here the main request is an enclosing barricade and restricted lane/site laydown area; the dumpster and stored materials sit WITHIN it. Choose BARRICADE for that overall site protection/occupation function. This does not mean every street dumpster or temporary unloading lane closure is BARRICADE.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2021-13673",
+    "description": "BUILDING CLEANOUT",
+    "wrong_alternatives": "MATERIALS / BARRICADE",
+    "category": "DEMOLITION DUMPSTER",
+    "explanation": "Reviewed clean-outs were treated as material handling or generic closures. This sparse BUILDING CLEANOUT permit is labeled DEMOLITION DUMPSTER. Clean-out means removal/disposal of unwanted contents rather than storage of incoming construction supplies. Dumpster need is dataset precedent, not an explicit noun here. Interior strip-out and renovation debris differ from protected whole-site demolition closures; demolition wording alone cannot decide the category.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2022-09453",
+    "description": "ROOF REPLACEMENT SHINGLES ONLY",
+    "wrong_alternatives": "MATERIALS / BARRICADE",
+    "category": "DEMOLITION DUMPSTER",
+    "explanation": "Reviewed shingle/siding replacement and interior removal were mistaken for incoming materials or barricades. This roof-shingle-replacement permit is DEMOLITION DUMPSTER: a replacement/removal disposal precedent, with no rooftop lift or material-storage purpose stated. Contrast siding with explicit material staging (MATERIALS) and roof/HVAC lifting (CRANE). Do not invent a stated container or apply this label to every renovation.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2023-10972",
+    "description": "REPAIRING BOX GUTTERS",
+    "wrong_alternatives": "MACHINERY / MATERIALS",
+    "category": "SCAFFOLD",
+    "explanation": "Reviewed gutter and facade repair cases were classified as materials or unspecified equipment. This short box-gutter repair permit is SCAFFOLD, a dataset-specific building-access precedent despite no explicit scaffold noun. Contrast explicit man-lift/JLG operations (usually MACHINERY) and HVAC placement (CRANE). The reviewed data contain exceptions, so facade/inspection wording alone cannot establish a scaffold; report uncertainty instead of claiming unstated equipment.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2025-04182",
+    "description": "BUILDING EXTERIOR CURTAIN WALL INSPECTIONS & WINDOW CLEANING. 501 PENN AVENUE PLACE; STREETS WHERE JLG WILL OPERATE FROM ALLEY SIDE, FT. DUQUESNE BLVD, STANWIX STREET & PENN AVENUE. (1) ONE JLG TO OPERATE FROM CURB LANE. FLAGMAN TO ASSIST WITH TRAFFIC CONTROL. WORKING DATES: 04/21/2025 THRU 04/27/2025. WEEKDAY HOURS: 9AM - 2PM. WEEKEND HOURS: 7AM - 1PM.",
+    "wrong_alternatives": "SCAFFOLD / BARRICADE",
+    "category": "MACHINERY",
+    "explanation": "Reviewed facade inspections were confused with scaffolding or generic closures. Here a JLG operates from the curb lane for curtain-wall inspection and window cleaning: mobile access equipment is the operational staging purpose, so MACHINERY. Flaggers and street occupancy are supporting controls, not enough to change the category to BARRICADE. Contrast erected scaffold access and the sparse box-gutter SCAFFOLD precedent; facade work alone does not identify its access equipment.",
+    "source": "prompt_development.csv"
+  },
+  {
+    "permit_id": "DOMI-CS-2023-11892",
+    "description": "WE NEED TO BLOCK ONE LANE OF GRANT ST. TO UNLOAD/LOAD MATERIALS FROM A TRUCK AND MOVE THEM INTO THE BUILDING. THIS WORK WILL TAKE ROUGHLY 3-4 HOURS AND WILL OCCUR AT THE INTERSECTION OF GRANT ST. AND OLIVER AVE. THE MATERIALS WILL BE GOING INTO THE STEEL PLAZA STATION ENTRANCE.",
+    "wrong_alternatives": "BARRICADE / CRANE",
+    "category": "MATERIALS",
+    "explanation": "Reviewed material staging was confused with barricades because a travel lane was occupied. This permit explicitly blocks a lane temporarily to unload/load supplies and move them into a building, so MATERIALS. The lane closure supports delivery rather than a protected construction-site enclosure. No rooftop or heavy-unit lifting is stated, so do not invent CRANE from truck unloading. Contrast the enclosing barricade example and HVAC-placement CRANE precedent.",
+    "source": "prompt_development.csv"
+  }
+]

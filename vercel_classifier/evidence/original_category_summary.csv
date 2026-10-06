@@ -1,0 +1,7 @@
+model,prompt_condition,n_examples,accuracy,macro_f1,failed_predictions,prompt_tokens,completion_tokens,n_scored
+llama-4-scout,zero,0,0.755556,0.75946,2,28817.0,6941.0,180
+llama-4-scout,one,1,0.738889,0.736045,1,32261.0,6803.0,180
+llama-4-scout,several,6,0.772222,0.774312,1,57137.0,7093.0,180
+gpt-oss-120b,zero,0,0.744444,0.747132,0,39805.0,16141.0,180
+gpt-oss-120b,one,1,0.705556,0.703503,0,43045.0,17113.0,180
+gpt-oss-120b,several,6,0.683333,0.696793,0,68245.0,17489.0,180

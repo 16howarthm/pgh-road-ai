@@ -1,0 +1,7 @@
+model,prompt_condition,n_examples,n_scored,accuracy,macro_f1,failed_predictions,prompt_tokens,completion_tokens,prompt
+llama-4-scout,error_review_eight,8,172,0.75,0.7725050776503561,8,149132.0,4416.0,8 examples
+gpt-oss-120b,error_review_eight,8,172,0.7848837209302325,0.7927416043434089,0,169536.0,14199.0,8 examples
+muse-glimmer,error_review_eight,8,172,0.8081395348837209,0.8103892917777986,0,158288.0,34875.0,8 examples
+llama-4-scout,boundary_review_ten,10,172,0.7267441860465116,0.7708193443401382,19,281458.0,4325.0,10 examples
+gpt-oss-120b,boundary_review_ten,10,172,0.7674418604651163,0.7637802542303662,0,324970.0,15892.0,10 examples
+muse-glimmer,boundary_review_ten,10,172,0.8372093023255814,0.8335341488966505,0,318344.0,37882.0,10 examples

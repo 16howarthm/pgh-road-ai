@@ -1,0 +1,4 @@
+model,previous_accuracy_percent,revised_accuracy_percent,change_percentage_points,previous_failures,revised_failures
+llama-4-scout,75.0,72.67441860465115,-2.3255813953488413,8,19
+gpt-oss-120b,78.48837209302324,76.74418604651163,-1.74418604651162,0,0
+muse-glimmer,80.81395348837209,83.72093023255815,2.9069767441860517,0,0

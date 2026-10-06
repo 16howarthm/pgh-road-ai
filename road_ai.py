@@ -36,9 +36,9 @@ def _stable_key(seed: int, purpose: str, *values) -> str:
 
 
 def jetstream_client(api_key: Optional[str] = None):
-    key = api_key or os.getenv("jetstream_api_key")
+    key = api_key or os.getenv("jetstream_api_key") or os.getenv("JETSTREAM_API_KEY")
     if not key:
-        raise ValueError("Set jetstream_api_key or pass api_key.")
+        raise ValueError("Set JETSTREAM_API_KEY or jetstream_api_key, or pass api_key.")
     return OpenAI(base_url="https://llm.jetstream-cloud.org/api/", api_key=key)
 
 

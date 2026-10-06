@@ -1,0 +1,4 @@
+model,prompt_condition,n_examples,n_scored,accuracy,macro_f1,failed_predictions,prompt_tokens,completion_tokens
+llama-4-scout,error_review_eight,8,172,0.0,0.0,172,0,0
+gpt-oss-120b,error_review_eight,8,172,0.0,0.0,172,0,0
+muse-glimmer,error_review_eight,8,172,0.0,0.0,172,0,0

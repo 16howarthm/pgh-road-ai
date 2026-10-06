@@ -1,0 +1,5 @@
+prediction_status,permits,percent_of_sample
+ASSIGNED,225,90.0
+OUT OF SCOPE,25,10.0
+FAILED,0,0.0
+NOT COMPLETED,0,0.0

@@ -1,0 +1,16 @@
+{
+  "successful": 250,
+  "total": 250,
+  "assigned": 225,
+  "abstained": 25,
+  "out_of_scope": 25,
+  "outside_original_evaluation_type": 250,
+  "mean_confidence": 0.6833599999999999,
+  "evaluation_accuracy": 0.7771317829457365,
+  "evaluation_ece": 0.09605633802816897,
+  "evaluation_brier": 0.14493319919517103,
+  "network_wall_seconds": 124.90600316700147,
+  "requests_per_second": 2.0015050811108392,
+  "median_latency": 3.5285454795002806,
+  "p95_latency": 7.269247560750132
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "permit_id": "DOMI-CS-2020-01589",
+    "description": "FACADE INSPECTIONS USING MAN LIFT",
+    "wrong_prediction": "SCAFFOLD",
+    "category": "MACHINERY",
+    "explanation": "The original prediction treated facade inspection as proof of scaffolding. The description explicitly names a man lift: mobile access equipment, rather than an erected scaffold. Classify this equipment-based inspection as MACHINERY; facade work alone does not establish SCAFFOLD."
+  },
+  {
+    "permit_id": "DOMI-CS-2021-12554",
+    "description": "WELDING OF NEW HAND RAIL ON PROPERTY",
+    "wrong_prediction": "MATERIALS",
+    "category": "MACHINERY",
+    "explanation": "The original prediction focused on the new hand rail as a physical material. The operative activity is welding, an equipment-based operation. The recorded category is MACHINERY. Distinguish performing welding from merely storing or delivering railing materials."
+  },
+  {
+    "permit_id": "DOMI-CS-2022-08484",
+    "description": "RESIDENTIAL RENOVATION",
+    "wrong_prediction": "BARRICADE",
+    "category": "MATERIALS",
+    "explanation": "The original prediction inferred a general site closure from a vague renovation description. No barricade or protected closure is stated. This reviewed permit is labeled MATERIALS. Treat it as a dataset-specific precedent for this sparse wording, not proof that every residential renovation uses material staging."
+  },
+  {
+    "permit_id": "DOMI-CS-2022-10074",
+    "description": "CONCRETE RAMP DEMOLITION ON DONNER DORM",
+    "wrong_prediction": "DEMOLITION DUMPSTER",
+    "category": "BARRICADE",
+    "explanation": "The original prediction matched the word demolition and assumed a dumpster. The description identifies ramp demolition, but does not mention a dumpster or waste container. The reviewed permit is BARRICADE. Demolition activity alone is insufficient to establish the dumpster category; this label reflects the recorded closure permit."
+  },
+  {
+    "permit_id": "DOMI-CS-2023-03525",
+    "description": "ROOF INSTALLATION",
+    "wrong_prediction": "MATERIALS",
+    "category": "DEMOLITION DUMPSTER",
+    "explanation": "The original prediction assumed roof installation primarily meant delivering new roofing materials. This reviewed permit is labeled DEMOLITION DUMPSTER. The short description does not explicitly mention debris or a container, so this correction is dataset-specific precedent rather than evidence that a dumpster is stated. Do not invent a materials delivery from the project title."
+  },
+  {
+    "permit_id": "DOMI-CS-2024-05362",
+    "description": "WINDOW INSTALLATION",
+    "wrong_prediction": "MATERIALS",
+    "category": "SCAFFOLD",
+    "explanation": "The original prediction equated installing windows with handling materials. The reviewed permit is SCAFFOLD, representing the access/staging category rather than the installed product. The wording does not explicitly name a scaffold; use this labeled precedent while acknowledging that a project title alone cannot establish the equipment used."
+  },
+  {
+    "permit_id": "DOMI-CS-2025-04623",
+    "description": "BUILDING FRONT FACADE REPOINT AND PAINT",
+    "wrong_prediction": "MATERIALS",
+    "category": "SCAFFOLD",
+    "explanation": "The original prediction focused on mortar and paint as materials. The reviewed label is SCAFFOLD for front-facade repointing and painting. Distinguish facade access/staging from storing materials. Scaffolding is not explicit in the text, so this is a recorded category precedent, not permission to claim that a scaffold is mentioned."
+  },
+  {
+    "permit_id": "DOMI-CS-2024-15300",
+    "description": "CUDDY ROOFING LIFTING ROOFING MATERIALS TO ROOF AT ENERGY INNOVATIVE CENTER 1435 BEDFORD AVE. PGH PA 15219",
+    "wrong_prediction": "MATERIALS",
+    "category": "CRANE",
+    "explanation": "The original prediction focused on roofing materials and overlooked lifting them to the roof. The operative activity is a roof-level lifting operation, and the reviewed permit is CRANE. Classify the lifting operation rather than the lifted cargo. The word crane is not explicit; the recorded label resolves this case without inventing a named crane in the description."
+  }
+]

@@ -35,9 +35,9 @@ if (typeof L === 'undefined') {
   status.textContent = 'Map library could not load. Check your connection to unpkg.com.';
 } else {
   const map = L.map('map', {preferCanvas:false}).setView([40.4406,-79.9959],12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    maxZoom:20,
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19,
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
   L.geoJSON(data, {style:{color:'#ffffff',weight:11,opacity:1},interactive:false}).addTo(map);
   const roads = L.geoJSON(data, {

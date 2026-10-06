@@ -1,0 +1,4 @@
+model,prompt_condition,n_examples,n_scored,accuracy,macro_f1,failed_predictions,prompt_tokens,completion_tokens
+llama-4-scout,boundary_review_ten,10,172,0.7267441860465116,0.7708193443401382,19,281458.0,4325.0
+gpt-oss-120b,boundary_review_ten,10,172,0.7674418604651163,0.7637802542303662,0,324970.0,15892.0
+muse-glimmer,boundary_review_ten,10,172,0.8372093023255814,0.8335341488966505,0,318344.0,37882.0
