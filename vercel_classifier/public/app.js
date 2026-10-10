@@ -84,6 +84,7 @@ form.addEventListener('submit', async event => {
     if (!response.ok) throw new Error(data.error || 'Classification failed. Please try again.');
     document.getElementById('category').textContent = data.category;
     document.getElementById('reason').textContent = data.reason;
+    document.getElementById('confidence').textContent = `Confidence: ${data.confidence} (0–1)`;
     document.getElementById('attribution').textContent =
       `${configuration.providers[data.provider].label} · ${data.model}`;
     result.hidden = false;

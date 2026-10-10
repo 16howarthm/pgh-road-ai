@@ -74,7 +74,7 @@ If every classification fails, check the displayed provider error and the Commun
 
 Live page: https://pgh-road-ai-backup.vercel.app/
 
-Run `.venv/bin/python classifier_demo_vercel.py` from the repository root, then open http://localhost:8000. Local execution loads keys from `.env.local` when python-dotenv is installed, or from the environment. The page defaults to **OpenAI / gpt-4.1-mini**. Choose a provider to use its saved server-side key, then select a model or enter a custom chat model ID. There is no automatic switch to another provider; each test uses your explicit selection.
+Run `.venv/bin/python classifier_demo_vercel.py` from the repository root, then open http://localhost:8000. Local execution loads keys from `.env.local` when python-dotenv is installed, or from the environment. The page defaults to **Jetstream / gpt-oss-120b** and displays the category, confidence score (0–1), and explanation. Choose a provider to use its saved server-side key, then select a model or enter a custom chat model ID. There is no automatic switch to another provider; each test uses your explicit selection.
 
 | Provider | Server environment variable | Example models |
 | --- | --- | --- |

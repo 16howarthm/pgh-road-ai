@@ -15,7 +15,7 @@ class BackupClassifierTests(unittest.TestCase):
     def test_reason_is_requested_and_returned_without_html_rendering(self, urlopen):
         urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
             'choices': [{'message': {'content': json.dumps({
-                'category': 'CRANE', 'reason': '  A crane lifts equipment.\nThis requires street space.  '
+                'category': 'CRANE', 'confidence': 0.9, 'reason': '  A crane lifts equipment.\nThis requires street space.  '
             })}}]
         }).encode())
         result = backup.classify_description('crane lift', provider='jetstream')
@@ -28,7 +28,7 @@ class BackupClassifierTests(unittest.TestCase):
     def test_missing_or_invalid_reason_is_rejected(self, urlopen):
         for reason in [None, '', '   ', 12, ['explanation']]:
             urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-                'choices': [{'message': {'content': json.dumps({'category': 'CRANE', 'reason': reason})}}]
+                'choices': [{'message': {'content': json.dumps({'category': 'CRANE', 'confidence': 0.9, 'reason': reason})}}]
             }).encode())
             with self.assertRaises(backup.ClassificationError) as error:
                 backup.classify_description('crane lift', provider='jetstream')
@@ -45,23 +45,24 @@ class BackupClassifierTests(unittest.TestCase):
         for provider, model, key in cases:
             with self.subTest(provider=provider):
                 urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-                    'choices': [{'message': {'content': '{"category":"CRANE","reason":"The description mentions a crane lift."}'}}]
+                    'choices': [{'message': {'content': '{"category":"CRANE","confidence":0.9,"reason":"The description mentions a crane lift."}'}}]
                 }).encode())
                 result = backup.classify_description('crane lift', provider, model)
                 request = urlopen.call_args.args[0]
                 payload = json.loads(request.data)
                 self.assertEqual(request.get_header('Authorization'), 'Bearer ' + key)
                 self.assertEqual(request.full_url, backup.PROVIDERS[provider]['url'])
-                self.assertEqual(result, {'category': 'CRANE', 'reason': 'The description mentions a crane lift.', 'provider': provider, 'model': model})
+                self.assertEqual(result, {'category': 'CRANE', 'confidence': 0.9, 'reason': 'The description mentions a crane lift.', 'provider': provider, 'model': model})
                 self.assertEqual(payload['model'], model)
                 self.assertEqual('provider' in payload, provider == 'openrouter')
                 if provider == 'jetstream':
                     self.assertEqual(payload['reasoning_effort'], 'low')
 
     @patch.dict(os.environ, {'OPENAI_API_KEY': 'private-key-value'}, clear=True)
-    def test_configuration_defaults_to_openai_and_never_exposes_secrets(self):
+    def test_configuration_defaults_to_jetstream_and_never_exposes_secrets(self):
         config = backup.public_configuration()
-        self.assertEqual(config['default_provider'], 'openai')
+        self.assertEqual(config['default_provider'], 'jetstream')
+        self.assertEqual(config['providers']['jetstream']['default_model'], 'gpt-oss-120b')
         self.assertTrue(config['providers']['openai']['configured'])
         self.assertFalse(config['providers']['jetstream']['configured'])
         self.assertNotIn('private-key-value', json.dumps(config))
@@ -86,9 +87,9 @@ class BackupClassifierTests(unittest.TestCase):
     @patch.object(backup, 'urlopen')
     def test_custom_reasoning_model_does_not_send_temperature(self, urlopen):
         urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-            'choices': [{'message': {'content': '{"category":"CRANE","reason":"The description mentions a crane lift."}'}}]
+            'choices': [{'message': {'content': '{"category":"CRANE","confidence":0.9,"reason":"The description mentions a crane lift."}'}}]
         }).encode())
-        backup.classify_description('crane lift', model='gpt-5-mini')
+        backup.classify_description('crane lift', provider='openai', model='gpt-5-mini')
         self.assertNotIn('temperature', json.loads(urlopen.call_args.args[0].data))
 
     @patch.object(backup, 'classify_description', return_value={'category': 'CRANE'})
@@ -114,7 +115,7 @@ class BackupClassifierTests(unittest.TestCase):
         ]:
             urlopen.side_effect = HTTPError('url', 429, 'private', {}, BytesIO(json.dumps(body).encode()))
             with self.assertRaises(backup.ClassificationError) as error:
-                backup.classify_description('crane lift')
+                backup.classify_description('crane lift', provider='openai')
             self.assertIn(expected, str(error.exception))
             self.assertNotIn('sensitive', str(error.exception))
 
@@ -128,9 +129,9 @@ class BackupClassifierTests(unittest.TestCase):
     @patch.object(backup, 'urlopen')
     def test_valid_category_and_provider_request(self, urlopen):
         urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
-            'choices': [{'message': {'content': '```json\n{"category":"crane","reason":"The description mentions a crane lift."}\n```'}}]
+            'choices': [{'message': {'content': '```json\n{"category":"crane","confidence":0.9,"reason":"The description mentions a crane lift."}\n```'}}]
         }).encode())
-        self.assertEqual(backup.classify_description(' crane lift ')['category'], 'CRANE')
+        self.assertEqual(backup.classify_description(' crane lift ', provider='openai')['category'], 'CRANE')
         request = urlopen.call_args.args[0]
         payload = json.loads(request.data)
         self.assertEqual(payload['messages'][1]['content'], 'crane lift')
@@ -153,7 +154,7 @@ class BackupClassifierTests(unittest.TestCase):
     def test_errors_do_not_expose_provider_body(self, urlopen):
         urlopen.side_effect = HTTPError('url', 403, 'sensitive details', {}, BytesIO(b'secret'))
         with self.assertRaises(backup.ClassificationError) as error:
-            backup.classify_description('crane lift')
+            backup.classify_description('crane lift', provider='openai')
         self.assertIn('OPENAI_API_KEY', str(error.exception))
         self.assertNotIn('secret', str(error.exception))
 
@@ -164,5 +165,25 @@ class BackupClassifierTests(unittest.TestCase):
             urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
                 'choices': [{'message': {'content': content}}]}).encode())
             with self.assertRaises(backup.ClassificationError) as error:
-                backup.classify_description('crane lift')
+                backup.classify_description('crane lift', provider='openai')
             self.assertEqual(error.exception.status, 502)
+
+    @patch.dict(os.environ, {'JETSTREAM_API_KEY': 'test-secret'}, clear=True)
+    @patch.object(backup, 'urlopen')
+    def test_default_model_and_confidence_validation(self, urlopen):
+        for confidence in [0, 0.9, 1, None, -0.1, 1.1, True, '0.9', float('nan')]:
+            with self.subTest(confidence=confidence):
+                urlopen.return_value.__enter__.return_value = BytesIO(json.dumps({
+                    'choices': [{'message': {'content': json.dumps({
+                        'category': 'CRANE', 'reason': 'Crane lift.', 'confidence': confidence
+                    })}}]
+                }).encode())
+                if confidence is None or isinstance(confidence, (bool, str)) or not 0 <= confidence <= 1:
+                    with self.assertRaises(backup.ClassificationError) as error:
+                        backup.classify_description('crane lift')
+                    self.assertEqual(error.exception.status, 502)
+                else:
+                    result = backup.classify_description('crane lift')
+                    self.assertEqual(result['confidence'], confidence)
+                    self.assertEqual(result['provider'], 'jetstream')
+                    self.assertEqual(result['model'], 'gpt-oss-120b')

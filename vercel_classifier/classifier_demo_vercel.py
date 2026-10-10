@@ -29,7 +29,7 @@ PROVIDERS = {
     'jetstream': {
         'label': 'Jetstream', 'key_env': 'JETSTREAM_API_KEY',
         'url': 'https://llm.jetstream-cloud.org/api/chat/completions',
-        'default_model': 'llama-4-scout',
+        'default_model': 'gpt-oss-120b',
         'models': ['llama-4-scout', 'gpt-oss-120b', 'muse-glimmer'],
     },
 }
@@ -38,7 +38,7 @@ PROVIDERS = {
 def public_configuration():
     """Only expose key availability, never key values or arbitrary environment data."""
     return {
-        'default_provider': 'openai',
+        'default_provider': 'jetstream',
         'providers': {
             name: {'label': value['label'], 'models': value['models'],
                    'default_model': value['default_model'],
@@ -54,7 +54,7 @@ class ClassificationError(Exception):
         self.status = status
 
 
-def classify_description(description, provider='openai', model=None):
+def classify_description(description, provider='jetstream', model=None):
     if not isinstance(description, str) or not description.strip():
         raise ClassificationError('Enter a work description.', 400)
     description = description.strip()
@@ -129,7 +129,10 @@ def classify_description(description, provider='openai', model=None):
     if not isinstance(reason, str) or not reason.strip():
         raise ClassificationError('The model did not return an explanation. Please try again.', 502)
     reason = ' '.join(reason.split())
-    return {'category': category, 'reason': reason, 'model': model, 'provider': provider}
+    confidence = result.get('confidence')
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
+        raise ClassificationError('The model returned an invalid confidence score. Please try again.', 502)
+    return {'category': category, 'confidence': confidence, 'reason': reason, 'model': model, 'provider': provider}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -180,7 +183,7 @@ class handler(BaseHTTPRequestHandler):
             return
         try:
             self.send_json(200, classify_description(
-                payload.get('description'), payload.get('provider', 'openai'), payload.get('model')
+                payload.get('description'), payload.get('provider', 'jetstream'), payload.get('model')
             ))
         except ClassificationError as exc:
             self.send_json(exc.status, {'error': str(exc)})
